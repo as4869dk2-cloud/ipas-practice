@@ -44,6 +44,7 @@ h3 { font-size: 20px; line-height: 1.55; }
 .muted { color: var(--muted); line-height: 1.7; }
 .hidden { display: none; }
 .card { background: rgba(17, 26, 30, .9); border: 1px solid var(--line); border-radius: 16px; padding: 26px; margin: 16px 0; box-shadow: 0 20px 60px #00000024; }
+.developer-card { border-color: #315143; }
 .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
 .step { display: inline-block; vertical-align: middle; padding: 5px 7px; border: 1px solid #416b53; border-radius: 6px; letter-spacing: .08em; }
 .section-kicker { color: var(--muted); font-size: 10px; }

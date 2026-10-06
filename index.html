@@ -38,6 +38,13 @@
       <div id="reviewList"></div>
     </section>
 
+    <section class="card developer-card">
+      <div class="section-head"><div><span class="step">DEV</span><h2>開發者後台</h2></div><span class="section-kicker">ADMIN</span></div>
+      <p class="muted">只有開發者需要登入；一般使用者不需要帳號即可練習。</p>
+      <div class="url-row"><input id="developerEmail" type="email" placeholder="輸入開發者 Email" autocomplete="email"><button id="developerLogin">寄送登入連結</button></div>
+      <p id="developerStatus" class="muted" aria-live="polite"></p>
+    </section>
+
     <section id="practiceView" class="card hidden">
       <div class="section-head"><div><span class="step">02</span><h2>開始測驗</h2></div><span id="bankCount"></span></div>
       <button id="startQuiz">隨機抽 10 題</button>

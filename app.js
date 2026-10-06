@@ -95,6 +95,13 @@ function submitQuestion() {
   $('questionBox').innerHTML = ''; $('nextQuestion').classList.add('hidden'); $('progress').textContent = '測驗完成'; $('result').innerHTML = `<h3>測驗完成</h3><p>答對 ${score} 題，答錯 ${quiz.length - score} 題。</p>`;
 }
 $('parseText').onclick = () => showReview(parseQuestions($('textInput').value));
+$('developerLogin').onclick = async () => {
+  const email = $('developerEmail').value.trim();
+  if (!email) { $('developerStatus').textContent = '請先輸入 Email。'; return; }
+  $('developerStatus').textContent = '正在寄送登入連結…';
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+  $('developerStatus').textContent = error ? `寄送失敗：${error.message}` : '登入連結已寄出，請查看 Email。';
+};
 $('heroImport').onclick = () => $('importView').scrollIntoView({ behavior: 'smooth' });
 $('startQuiz').onclick = startQuiz;
 $('nextQuestion').onclick = submitQuestion;
