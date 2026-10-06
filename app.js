@@ -5,6 +5,10 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_i9o1qSLTRC-XSi5-5y2EVw__A3v3HnM
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const $ = (id) => document.getElementById(id);
 let bank = [], quiz = [], index = 0, score = 0, answered = false;
+function updateDeveloperAccess(user) {
+  $('importView').classList.toggle('hidden', !user || user.is_anonymous);
+  if (user && !user.is_anonymous) $('developerStatus').textContent = '開發者已登入，可匯入並發布題目。';
+}
 
 function renderBank() {
   $('practiceView').classList.toggle('hidden', bank.length === 0);
@@ -37,8 +41,14 @@ async function initCloud() {
     const { error } = await supabase.auth.signInAnonymously();
     if (error) throw error;
   }
+  const { data: { session: activeSession } } = await supabase.auth.getSession();
+  updateDeveloperAccess(activeSession?.user);
   await loadBank();
   $('fileStatus').textContent = '雲端題庫已連線，資料會自動保存。';
+  supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    updateDeveloperAccess(nextSession?.user);
+    if (nextSession?.user && !nextSession.user.is_anonymous) await loadBank();
+  });
 }
 function parseQuestions(text, fileName = '貼上文字', pageOffsets = []) {
   text = cleanPdfText(text);
