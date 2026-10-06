@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IPAS 題庫練習</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">I</span><div><strong>IPAS Lab</strong><span>AI 應用規劃師</span></div></div>
+      <div class="status"><span class="status-dot"></span>本機模式</div>
+    </header>
+
+    <section class="intro">
+      <p class="eyebrow">DAILY PRACTICE / 01</p>
+      <h1>把每一次練習，<br><span class="accent-text">變成準備。</span></h1>
+      <p class="muted">IPAS AI 應用規劃師的個人題庫工具。匯入考古題，校對後開始一回十題快測。</p>
+      <div class="intro-actions"><button id="heroImport">匯入考古題 <span>↗</span></button><span class="hero-note">資料只保存在這個瀏覽器</span></div>
+    </section>
+
+    <section class="metrics" aria-label="題庫摘要">
+      <div><strong id="metricBank">—</strong><span>已校對題目</span></div>
+      <div><strong>10</strong><span>每回題數</span></div>
+      <div><strong>100%</strong><span>本機保存</span></div>
+    </section>
+
+    <section id="importView" class="card">
+      <div class="section-head"><div><span class="step">01</span><h2>匯入考古題</h2></div><span class="section-kicker">SOURCE</span></div>
+      <label class="upload">選擇文字型 PDF
+        <input id="pdfInput" type="file" accept="application/pdf">
+      </label>
+      <div class="url-import"><label for="pdfUrl">或貼上公開 PDF 網址</label><div class="url-row"><input id="pdfUrl" type="url" placeholder="https://example.com/questions.pdf"><button id="loadPdfUrl" class="secondary">從網址讀取</button></div></div>
+      <p id="fileStatus" class="muted">尚未選擇檔案。</p>
+      <textarea id="textInput" rows="7" placeholder="也可以先貼上 PDF 文字，格式：\n題目\nA. 選項一\nB. 選項二\nC. 選項三\nD. 選項四\n答案：A"></textarea>
+      <button id="parseText">解析貼上文字</button>
+      <div id="reviewList"></div>
+    </section>
+
+    <section id="practiceView" class="card hidden">
+      <div class="section-head"><div><span class="step">02</span><h2>開始測驗</h2></div><span id="bankCount"></span></div>
+      <button id="startQuiz">隨機抽 10 題</button>
+      <button id="generateAi" class="secondary">產生 AI 練習題</button>
+      <p id="aiStatus" class="muted"></p>
+      <div id="aiReview"></div>
+    </section>
+
+    <section id="quizView" class="card hidden">
+      <div class="section-head"><h2 id="quizTitle">測驗</h2><span id="progress"></span></div>
+      <div id="questionBox"></div>
+      <button id="nextQuestion">下一題</button>
+      <div id="result"></div>
+    </section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
