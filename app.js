@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const SUPABASE_URL = 'https://ycoerpqdorzilwsahczl.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_i9o1qSLTRC-XSi5-5y2EVw__A3v3HnM';
+const PUBLIC_APP_URL = 'https://as4869dk2-cloud.github.io/ipas-practice/';
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const $ = (id) => document.getElementById(id);
 let bank = [], quiz = [], index = 0, score = 0, answered = false;
@@ -129,7 +130,8 @@ $('developerLogin').onclick = async () => {
   const email = $('developerEmail').value.trim();
   if (!email) { $('developerStatus').textContent = '請先輸入 Email。'; return; }
   $('developerStatus').textContent = '正在寄送登入連結…';
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+  const redirectTo = ['localhost', '127.0.0.1'].includes(window.location.hostname) ? window.location.origin : PUBLIC_APP_URL;
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
   $('developerStatus').textContent = error ? `寄送失敗：${error.message}` : '登入連結已寄出，請查看 Email。';
 };
 $('heroImport').onclick = () => $('importView').scrollIntoView({ behavior: 'smooth' });
