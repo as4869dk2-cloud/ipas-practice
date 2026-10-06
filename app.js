@@ -12,7 +12,7 @@ function renderBank() {
   if ($('metricBank')) $('metricBank').textContent = bank.length;
 }
 function answerIndex(value) { return Math.max(0, 'ABCD'.indexOf(String(value).toUpperCase())); }
-function normalizeRow(row) { return { ...row, answer: Number(row.answer), page: row.source_page, source: row.source_file }; }
+function normalizeRow(row) { return { ...row, answer: Number(row.answer), page: row.source_page, source: row.source_file, is_public: Boolean(row.is_public) }; }
 function cleanPdfText(text) {
   return text.split('\n').filter((line) => {
     const value = line.trim();
@@ -61,16 +61,24 @@ function showReview(items) {
   if (!items.length) { list.innerHTML = '<p class="danger">找不到完整的四選一題目。請確認每題有四個選項與答案。</p>'; return; }
   items.forEach((item, i) => {
     const el = document.createElement('article'); el.className = 'review-item';
-    el.innerHTML = `<strong>第 ${i + 1} 題</strong><p class="review-meta">來源：${escapeHtml(item.source)} · PDF 第 ${item.page} 頁${item.incomplete ? ' · 需要人工校對答案' : ''}</p><textarea rows="2">${escapeHtml(item.question)}</textarea>${item.options.map((o, n) => `<input value="${escapeHtml(o)}" aria-label="選項 ${n + 1}">`).join('')}<label>正確答案 <select>${'ABCD'.split('').map((x, n) => `<option value="${n}" ${n === item.answer ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button>加入雲端題庫</button>`;
+    el.innerHTML = `<strong>第 ${i + 1} 題</strong><p class="review-meta">來源：${escapeHtml(item.source)} · PDF 第 ${item.page} 頁${item.incomplete ? ' · 需要人工校對答案' : ''}</p><textarea rows="2">${escapeHtml(item.question)}</textarea>${item.options.map((o, n) => `<input value="${escapeHtml(o)}" aria-label="選項 ${n + 1}">`).join('')}<label>正確答案 <select>${'ABCD'.split('').map((x, n) => `<option value="${n}" ${n === item.answer ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button>加入雲端題庫</button><button class="secondary publish-question hidden">發布給所有使用者</button>`;
     el.querySelector('button').onclick = async () => {
       const fields = el.querySelectorAll('input');
       const question = el.querySelector('textarea').value;
       const duplicate = bank.some((old) => old.question === question && old.source === item.source && old.page === item.page);
       if (duplicate) { el.querySelector('button').textContent = '已存在'; return; }
-      const payload = { question, options: [...fields].map((x) => x.value), answer: Number(el.querySelector('select').value), explanation: item.explanation, source_file: item.source, source_page: item.page, reviewed: true, ai: false };
+      const payload = { question, options: [...fields].map((x) => x.value), answer: Number(el.querySelector('select').value), explanation: item.explanation, source_file: item.source, source_page: item.page, reviewed: true, ai: false, is_public: false };
       const { data, error } = await supabase.from('questions').insert(payload).select().single();
       if (error) { el.querySelector('.review-meta').textContent = `保存失敗：${error.message}`; return; }
-      bank.push(normalizeRow(data)); renderBank(); el.remove();
+      bank.push(normalizeRow(data)); renderBank(); el.querySelector('button').textContent = '已加入';
+      const publish = el.querySelector('.publish-question'); publish.classList.remove('hidden');
+      publish.onclick = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || user.is_anonymous) { el.querySelector('.review-meta').textContent = '請先使用開發者 Email 登入，再發布給所有使用者。'; return; }
+        const result = await supabase.from('questions').update({ is_public: true }).eq('id', data.id).select().single();
+        if (result.error) { el.querySelector('.review-meta').textContent = `發布失敗：${result.error.message}`; return; }
+        const saved = normalizeRow(result.data); bank = bank.map((old) => old.id === saved.id ? saved : old); renderBank(); publish.textContent = '已發布'; publish.disabled = true;
+      };
     };
     list.append(el);
   });
