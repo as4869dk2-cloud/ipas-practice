@@ -18,10 +18,10 @@ function renderBank() {
 function answerIndex(value) { return Math.max(0, 'ABCD'.indexOf(String(value).toUpperCase())); }
 function normalizeRow(row) { return { ...row, answer: Number(row.answer), page: row.source_page, source: row.source_file, is_public: Boolean(row.is_public) }; }
 function cleanPdfText(text) {
-  return text.split('\n').filter((line) => {
+  return text.replace(/答案\s*題\s*目/gi, '\n').replace(/答案\s+題\s+目/gi, '\n').split('\n').filter((line) => {
     const value = line.trim();
     return value && !/^第\s*\d+\s*頁，共\s*\d+\s*頁$/i.test(value)
-      && !/^答案\s*題目$/i.test(value)
+      && !/^答案\s*題\s*目$/i.test(value)
       && value !== '答案'
       && value !== '題目'
       && !/AI\s*應用規劃師.*公告試題/i.test(value)
@@ -29,6 +29,16 @@ function cleanPdfText(text) {
       && !/^考試日期[:：]/i.test(value)
       && value !== '一、選擇題';
   }).join('\n');
+}
+function pdfPageText(items) {
+  const lines = [];
+  items.forEach((item) => {
+    const y = Math.round(item.transform[5]);
+    let line = lines.find((candidate) => Math.abs(candidate.y - y) <= 2);
+    if (!line) { line = { y, items: [] }; lines.push(line); }
+    line.items.push({ x: item.transform[4], text: item.str });
+  });
+  return lines.sort((a, b) => b.y - a.y).map((line) => line.items.sort((a, b) => a.x - b.x).map((item) => item.text).join(' ')).join('\n');
 }
 async function loadBank() {
   const { data, error } = await supabase.from('questions').select('*').order('created_at', { ascending: true });
@@ -130,7 +140,7 @@ async function parsePdfBuffer(buffer, fileName) {
     const pdf = await pdfjs.getDocument({ data: buffer }).promise;
     const pages = [], pageOffsets = [];
     let combined = '';
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) { const page = await pdf.getPage(pageNo); const content = await page.getTextContent(); const text = cleanPdfText(content.items.map((item) => item.str).join('\n')); pageOffsets.push({ pageNo, offset: combined.length }); combined += `${text}\n`; }
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) { const page = await pdf.getPage(pageNo); const content = await page.getTextContent(); const text = cleanPdfText(pdfPageText(content.items)); pageOffsets.push({ pageNo, offset: combined.length }); combined += `${text}\n`; }
     const items = parseQuestions(combined, fileName, pageOffsets);
     return { items, pages: pdf.numPages };
   } catch (error) { $('fileStatus').textContent = `PDF 解析失敗：${error.message || '未知錯誤'}。`; console.error(error); }
