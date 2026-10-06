@@ -89,8 +89,7 @@ async function parsePdfBuffer(buffer, fileName) {
     const pdf = await pdfjs.getDocument({ data: buffer }).promise;
     const pages = [];
     for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) { const page = await pdf.getPage(pageNo); const content = await page.getTextContent(); pages.push({ pageNo, text: content.items.map((item) => item.str).join('\n') }); }
-    const items = pages.flatMap(({ pageNo, text }) => parseQuestions(text, file.name).map((item) => ({ ...item, page: pageNo })));
-    $('fileStatus').textContent = `已讀取 ${pdf.numPages} 頁，找到 ${items.length} 題可校對題目。`;
+    const items = pages.flatMap(({ pageNo, text }) => parseQuestions(text, fileName).map((item) => ({ ...item, page: pageNo })));
     return { items, pages: pdf.numPages };
   } catch (error) { $('fileStatus').textContent = `PDF 解析失敗：${error.message || '未知錯誤'}。`; console.error(error); }
 }
