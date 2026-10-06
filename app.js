@@ -5,9 +5,11 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_i9o1qSLTRC-XSi5-5y2EVw__A3v3HnM
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const $ = (id) => document.getElementById(id);
 let bank = [], quiz = [], index = 0, score = 0, answered = false;
+function isAnonymousUser(user) { return Boolean(user?.is_anonymous || user?.app_metadata?.provider === 'anonymous'); }
 function updateDeveloperAccess(user) {
-  $('importView').classList.toggle('hidden', !user || user.is_anonymous);
-  if (user && !user.is_anonymous) $('developerStatus').textContent = '開發者已登入，可匯入並發布題目。';
+  const anonymous = isAnonymousUser(user);
+  $('importView').classList.toggle('hidden', !user || anonymous);
+  if (user && !anonymous) $('developerStatus').textContent = '開發者已登入，可匯入並發布題目。';
 }
 
 function renderBank() {
@@ -57,7 +59,7 @@ async function initCloud() {
   $('fileStatus').textContent = '雲端題庫已連線，資料會自動保存。';
   supabase.auth.onAuthStateChange(async (_event, nextSession) => {
     updateDeveloperAccess(nextSession?.user);
-    if (nextSession?.user && !nextSession.user.is_anonymous) await loadBank();
+    if (nextSession?.user && !isAnonymousUser(nextSession.user)) await loadBank();
   });
 }
 function parseQuestions(text, fileName = '貼上文字', pageOffsets = []) {
@@ -94,7 +96,7 @@ function showReview(items) {
       const publish = el.querySelector('.publish-question'); publish.classList.remove('hidden');
       publish.onclick = async () => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user || user.is_anonymous) { el.querySelector('.review-meta').textContent = '請先使用開發者 Email 登入，再發布給所有使用者。'; return; }
+        if (!user || isAnonymousUser(user)) { el.querySelector('.review-meta').textContent = '請先使用開發者 Email 登入，再發布給所有使用者。'; return; }
         const result = await supabase.from('questions').update({ is_public: true }).eq('id', data.id).select().single();
         if (result.error) { el.querySelector('.review-meta').textContent = `發布失敗：${result.error.message}`; return; }
         const saved = normalizeRow(result.data); bank = bank.map((old) => old.id === saved.id ? saved : old); renderBank(); publish.textContent = '已發布'; publish.disabled = true;
