@@ -13,6 +13,19 @@ function renderBank() {
 }
 function answerIndex(value) { return Math.max(0, 'ABCD'.indexOf(String(value).toUpperCase())); }
 function normalizeRow(row) { return { ...row, answer: Number(row.answer), page: row.source_page, source: row.source_file }; }
+function cleanPdfText(text) {
+  return text.split('\n').filter((line) => {
+    const value = line.trim();
+    return value && !/^第\s*\d+\s*頁，共\s*\d+\s*頁$/i.test(value)
+      && !/^答案\s*題目$/i.test(value)
+      && value !== '答案'
+      && value !== '題目'
+      && !/AI\s*應用規劃師.*公告試題/i.test(value)
+      && !/^第一科[:：]/i.test(value)
+      && !/^考試日期[:：]/i.test(value)
+      && value !== '一、選擇題';
+  }).join('\n');
+}
 async function loadBank() {
   const { data, error } = await supabase.from('questions').select('*').order('created_at', { ascending: true });
   if (error) throw error;
@@ -27,17 +40,20 @@ async function initCloud() {
   await loadBank();
   $('fileStatus').textContent = '雲端題庫已連線，資料會自動保存。';
 }
-function parseQuestions(text, fileName = '貼上文字') {
-  const starts = [...text.matchAll(/(?:^|\n)\s*(?:[A-D]\s+)?(\d{1,3})\.\s+/g)].map((match) => ({ number: match[1], markerStart: match.index, start: match.index + match[0].length }));
-  const blocks = starts.map((item, i) => text.slice(item.start, starts[i + 1]?.markerStart ?? text.length).replace(/\s+[A-D]\s+\d+\.\s*$/i, '').replace(/\s*第\s*\d+\s*頁，共\s*\d+\s*頁\s*$/i, '').trim());
+function parseQuestions(text, fileName = '貼上文字', pageOffsets = []) {
+  text = cleanPdfText(text);
+  const hasAnswerColumn = /(?:^|\n)\s*[A-D]\s+\d{1,3}\.\s+/i.test(text);
+  const startPattern = hasAnswerColumn ? /(?:^|\n)\s*(?:([A-D])\s+)?(\d{1,3})\.\s+/g : /(?:^|\n)\s*(\d{1,3})\.\s+/g;
+  const starts = [...text.matchAll(startPattern)].map((match) => ({ answer: hasAnswerColumn ? match[1] : '', number: hasAnswerColumn ? match[2] : match[1], markerStart: match.index, start: match.index + match[0].length }));
+  const blocks = starts.map((item, i) => text.slice(item.start, starts[i + 1]?.markerStart ?? text.length).replace(/\s*第\s*\d+\s*頁，共\s*\d+\s*頁\s*$/i, '').trim());
   return blocks.map((block, i) => {
-    const before = text.slice(starts[i].markerStart, starts[i].start).match(/^\s*([A-D])\s+\d+\.\s*$/i)?.[1];
-    const after = block.match(/\n\s*([A-D])\s*(?=\n|$)/i)?.[1];
+    const answer = starts[i + 1]?.answer || block.match(/\n\s*([A-D])\s*(?=\n|$)/i)?.[1];
     const optionMatches = [...block.matchAll(/\(([A-D])\)\s*([\s\S]*?)(?=\([A-D]\)\s*|$)/gi)];
     const options = optionMatches.map((match) => match[2].replace(/\s+/g, ' ').trim());
-    const question = block.slice(0, optionMatches[0]?.index ?? 0).replace(/\n\s*[A-D]\s*$/i, '').replace(/\s+/g, ' ').trim();
+    const question = block.slice(0, optionMatches[0]?.index ?? 0).replace(/\s*答案\s*題目\s*/g, ' ').replace(/\s+/g, ' ').trim();
     if (!question || options.length !== 4) return null;
-    return { question, options, answer: answerIndex(before || after || 'A'), explanation: '', source: fileName, page: i + 1, reviewed: false, ai: false, incomplete: !(before || after) };
+    const page = pageOffsets.reduce((result, entry) => starts[i].markerStart >= entry.offset ? entry.pageNo : result, 1);
+    return { question, options, answer: answer ? answerIndex(answer) : 0, explanation: '', source: fileName, page, reviewed: false, ai: false, incomplete: !answer };
   }).filter(Boolean);
 }
 function showReview(items) {
@@ -87,9 +103,10 @@ async function parsePdfBuffer(buffer, fileName) {
     const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
     pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
     const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-    const pages = [];
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) { const page = await pdf.getPage(pageNo); const content = await page.getTextContent(); pages.push({ pageNo, text: content.items.map((item) => item.str).join('\n') }); }
-    const items = pages.flatMap(({ pageNo, text }) => parseQuestions(text, fileName).map((item) => ({ ...item, page: pageNo })));
+    const pages = [], pageOffsets = [];
+    let combined = '';
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) { const page = await pdf.getPage(pageNo); const content = await page.getTextContent(); const text = cleanPdfText(content.items.map((item) => item.str).join('\n')); pageOffsets.push({ pageNo, offset: combined.length }); combined += `${text}\n`; }
+    const items = parseQuestions(combined, fileName, pageOffsets);
     return { items, pages: pdf.numPages };
   } catch (error) { $('fileStatus').textContent = `PDF 解析失敗：${error.message || '未知錯誤'}。`; console.error(error); }
 }
